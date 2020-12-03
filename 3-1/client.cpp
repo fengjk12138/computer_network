@@ -12,6 +12,19 @@
 using namespace std;
 
 string buffer[2000000];
+int len;
+
+char sum_cal(char *arr, int lent) {
+    if (lent == 0)
+        return ~(0);
+    char ret = arr[0];
+
+    for (int i = 1; i < lent; i++) {
+        ret = arr[i] + (char)((int(arr[i]) + ret) % ((1 << 8) - 1));
+    }
+    return ~ret;
+}
+
 
 int main() {
     WSADATA wsadata;
@@ -36,7 +49,35 @@ int main() {
     SOCKADDR_IN serverAddr, clientAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr("");
+    serverAddr.sin_addr.s_addr = inet_addr(serverip.c_str());
+
+    SOCKET client = socket(AF_INET, SOCK_DGRAM, 0);
+    if (client == INVALID_SOCKET) {
+        printf("creat udp socket error");
+        return 0;
+    }
+    string filename;
+    while (1) {
+        printf("请输入要发送的文件名：");
+        cin >> filename;
+        ifstream fin(filename.c_str(), fstream::binary);
+        if (!fin) {
+            printf("文件未找到，555~\n");
+            continue;
+        }
+        char t = fin.get();
+        while (!fin) {
+            buffer[++len] = t;
+            t = fin.get();
+        }
+        fin.close();
+        break;
+    }
+
+    while (1) {
+
+
+    }
 
 
     return 0;
