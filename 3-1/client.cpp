@@ -22,7 +22,7 @@ const char SHAKE_3 = 0x04;
 const char WAVE_1 = 0x80;
 const char WAVE_2 = 0x40;
 const int TIMEOUT = 500;//毫秒
-string buffer[2000000];
+char buffer[2000000];
 int len;
 
 SOCKET client = socket(AF_INET, SOCK_DGRAM, 0);
@@ -128,8 +128,10 @@ void wave_hand() {
 }
 
 void send_message(char *message, int lent) {
-
-
+    int package_num = lent / Mlenx + (lent % Mlenx != 0);
+    for (int i = 0; i < package_num; i++)
+        send_package(message + i * Mlenx, i == package_num - 1 ? lent - (package_num - 1) * Mlenx : Mlenx, i,
+                     i == package_num - 1);
 }
 
 
@@ -179,12 +181,17 @@ int main() {
         fin.close();
         break;
     }
-
-    while (1) {
-
-
-    }
-
+    printf("链接建立中...\n");
+    shake_hand();
+    printf("链接建立完成。 \n正在发送信息...\n");
+    send_message((char*)(filename.c_str()),filename.length());
+    printf("文件名发送完毕，正在发送文件内容...\n");
+    send_message(buffer, len);
+    printf("文件内容发送完毕。\n 开始断开连接...\n");
+    wave_hand();
+    printf("连接已断开。");
+    closesocket(client);
+    WSACleanup();
 
     return 0;
 }
