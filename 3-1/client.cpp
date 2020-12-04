@@ -72,7 +72,63 @@ bool send_package(char *message, int lent, int order, int last = 0) {
 }
 
 
+void shake_hand() {
+    while (1) {
+        //发送shake_1
+        char tmp[2];
+        tmp[1] = SHAKE_1;
+        tmp[0] = sum_cal(tmp + 1, 1);
+        sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+        int begintime = clock();
+        char recv[2];
+        int lentmp = sizeof(clientAddr);
+        int fail_send = 0;
+        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+            if (clock() - begintime > TIMEOUT) {
+                fail_send = 1;
+                break;
+            }
+        //接受shake_2并校验
+        if (fail_send == 0) {
+            if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_2)
+                continue;
+        } else continue;
+
+        //发送shake_3
+        tmp[1] = SHAKE_3;
+        tmp[0] = sum_cal(tmp + 1, 1);
+        sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+        break;
+    }
+}
+
+void wave_hand() {
+    while (1) {
+        //发送wave_1
+        char tmp[2];
+        tmp[1] = WAVE_1;
+        tmp[0] = sum_cal(tmp + 1, 1);
+        sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+        int begintime = clock();
+        char recv[2];
+        int lentmp = sizeof(clientAddr);
+        int fail_send = 0;
+        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+            if (clock() - begintime > TIMEOUT) {
+                fail_send = 1;
+                break;
+            }
+        //接受wave_2并校验
+        if (fail_send == 0) {
+            if (sum_cal(recv, 2) != 0 || recv[1] != WAVE_2)
+                continue;
+        } else continue;
+        break;
+    }
+}
+
 void send_message(char *message, int lent) {
+
 
 }
 
