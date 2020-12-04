@@ -52,7 +52,7 @@ bool send_package(char *message, int lent, int order, int last = 0) {
     for (int i = 3; i < lent + 3; i++)
         tmp[i] = message[i - 3];
     tmp[0] = sum_cal(tmp + 1, lent + 2);
-    while(1) {
+    while (1) {
         sendto(client, tmp, lent + 3, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
         int begintime = clock();
         char recv[2];
@@ -64,7 +64,7 @@ bool send_package(char *message, int lent, int order, int last = 0) {
                 break;
             }
         if (fail_send == 0) {
-            if (sum_cal(recv, 2) == 0)
+            if (sum_cal(recv, 2) == 0 && recv[1] == ACK)
                 return true;
             else fail_send = 1;
         }
