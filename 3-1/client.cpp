@@ -8,11 +8,25 @@
 #include <stdio.h>
 #include <fstream>
 #include <vector>
+#include <time.h>
 
 using namespace std;
-
+const int Mlenx = 510;
+const char ACK = 0x03;
+const char NAK = 0x07;
+const char LAST_PACK = 0x18;
+const char NOTLAST_PACK = 0x08;
+const char SHAKE_1 = 0x01;
+const char SHAKE_2 = 0x02;
+const char SHAKE_3 = 0x04;
+const char WAVE_1 = 0x80;
+const char WAVE_2 = 0x40;
+const int TIMEOUT = 500;//毫秒
 string buffer[2000000];
 int len;
+
+SOCKET client = socket(AF_INET, SOCK_DGRAM, 0);
+SOCKADDR_IN serverAddr, clientAddr;
 
 char sum_cal(char *arr, int lent) {
     if (lent == 0)
@@ -20,9 +34,46 @@ char sum_cal(char *arr, int lent) {
     char ret = arr[0];
 
     for (int i = 1; i < lent; i++) {
-        ret = arr[i] + (char)((int(arr[i]) + ret) % ((1 << 8) - 1));
+        ret = arr[i] + (char) ((int(arr[i]) + ret) % ((1 << 8) - 1));
     }
     return ~ret;
+}
+
+bool send_package(char *message, int lent, int order, int last = 0) {
+    if (lent > Mlenx) {
+        return false;
+    }
+    if (last == false && lent != 510) {
+        return false;
+    }
+    char *tmp = new char[lent + 3];
+    tmp[1] = last ? LAST_PACK : NOTLAST_PACK;
+    tmp[2] = order;
+    for (int i = 3; i < lent + 3; i++)
+        tmp[i] = message[i - 3];
+    tmp[0] = sum_cal(tmp + 1, lent + 2);
+    while(1) {
+        sendto(client, tmp, lent + 3, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+        int begintime = clock();
+        char recv[2];
+        int lentmp = sizeof(clientAddr);
+        int fail_send = 0;
+        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+            if (clock() - begintime > TIMEOUT) {
+                fail_send = 1;
+                break;
+            }
+        if (fail_send == 0) {
+            if (sum_cal(recv, 2) == 0)
+                return true;
+            else fail_send = 1;
+        }
+    }
+}
+
+
+void send_message(char *message, int lent) {
+
 }
 
 
@@ -46,12 +97,11 @@ int main() {
     }
 
     int port = 11451;
-    SOCKADDR_IN serverAddr, clientAddr;
+
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = inet_addr(serverip.c_str());
 
-    SOCKET client = socket(AF_INET, SOCK_DGRAM, 0);
     if (client == INVALID_SOCKET) {
         printf("creat udp socket error");
         return 0;
