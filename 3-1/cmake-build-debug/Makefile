@@ -58,19 +58,19 @@ cmake_force:
 SHELL = cmd.exe
 
 # The CMake executable.
-CMAKE_COMMAND = "C:\Program Files\JetBrains\CLion 2020.1\bin\cmake\win\bin\cmake.exe"
+CMAKE_COMMAND = "D:\JetBrain\CLion 2020.1\bin\cmake\win\bin\cmake.exe"
 
 # The command to remove a file.
-RM = "C:\Program Files\JetBrains\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -E rm -f
+RM = "D:\JetBrain\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = C:\Users\fengjk\Desktop\computer_network\3-1
+CMAKE_SOURCE_DIR = C:\Users\User\Desktop\computer_network\3-1
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = C:\Users\fengjk\Desktop\computer_network\3-1\cmake-build-debug
+CMAKE_BINARY_DIR = C:\Users\User\Desktop\computer_network\3-1\cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -78,7 +78,7 @@ CMAKE_BINARY_DIR = C:\Users\fengjk\Desktop\computer_network\3-1\cmake-build-debu
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	"C:\Program Files\JetBrains\CLion 2020.1\bin\cmake\win\bin\cmake.exe" --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	"D:\JetBrain\CLion 2020.1\bin\cmake\win\bin\cmake.exe" --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -89,7 +89,7 @@ rebuild_cache/fast: rebuild_cache
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	"C:\Program Files\JetBrains\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -E echo "No interactive CMake dialog available."
+	"D:\JetBrain\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -E echo "No interactive CMake dialog available."
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -99,9 +99,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\fengjk\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles C:\Users\fengjk\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles\progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\User\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles C:\Users\User\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles\progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\fengjk\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\User\Desktop\computer_network\3-1\cmake-build-debug\CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -142,32 +142,32 @@ network/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/build
 .PHONY : network/fast
 
-client.obj: client.cpp.obj
+main.obj: main.cpp.obj
 
-.PHONY : client.obj
+.PHONY : main.obj
 
 # target to build an object file
-client.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/client.cpp.obj
-.PHONY : client.cpp.obj
+main.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/main.cpp.obj
+.PHONY : main.cpp.obj
 
-client.i: client.cpp.i
+main.i: main.cpp.i
 
-.PHONY : client.i
+.PHONY : main.i
 
 # target to preprocess a source file
-client.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/client.cpp.i
-.PHONY : client.cpp.i
+main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/main.cpp.i
+.PHONY : main.cpp.i
 
-client.s: client.cpp.s
+main.s: main.cpp.s
 
-.PHONY : client.s
+.PHONY : main.s
 
 # target to generate assembly for a file
-client.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/client.cpp.s
-.PHONY : client.cpp.s
+main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\network.dir\build.make CMakeFiles/network.dir/main.cpp.s
+.PHONY : main.cpp.s
 
 # Help Target
 help:
@@ -178,9 +178,9 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... network
-	@echo ... client.obj
-	@echo ... client.i
-	@echo ... client.s
+	@echo ... main.obj
+	@echo ... main.i
+	@echo ... main.s
 .PHONY : help
 
 

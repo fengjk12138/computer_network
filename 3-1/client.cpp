@@ -111,9 +111,9 @@ void wave_hand() {
         sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
         int begintime = clock();
         char recv[2];
-        int lentmp = sizeof(clientAddr);
+        int lentmp = sizeof(serverAddr);
         int fail_send = 0;
-        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+        while (recvfrom(client, recv, 2, 0, (sockaddr *) &serverAddr, &lentmp) == SOCKET_ERROR)
             if (clock() - begintime > TIMEOUT) {
                 fail_send = 1;
                 break;

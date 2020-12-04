@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/network.dir/client.cpp.obj"
+  "CMakeFiles/network.dir/main.cpp.obj"
   "libnetwork.dll.a"
   "network.exe"
   "network.exe.manifest"
