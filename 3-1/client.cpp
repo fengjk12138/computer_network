@@ -109,10 +109,12 @@ void shake_hand() {
                 sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
                 break;
             }
+        }
     }
 }
 
 void wave_hand() {
+    int tot_fail = 0;
     while (1) {
         //发送wave_1
         char tmp[2];
@@ -126,16 +128,22 @@ void wave_hand() {
         while (recvfrom(client, recv, 2, 0, (sockaddr *) &serverAddr, &lentmp) == SOCKET_ERROR)
             if (clock() - begintime > TIMEOUT) {
                 fail_send = 1;
+                tot_fail++;
                 break;
             }
         //接受wave_2并校验
-        if (fail_send == 0) {
-            if (sum_cal(recv, 2) != 0 || recv[1] != WAVE_2)
-                continue;
-        } else continue;
-        break;
+        if (fail_send == 0 && sum_cal(recv, 2) == 0 && recv[1] == WAVE_2)
+            break;
+        else {
+            if (tot_fail == 3) {
+                printf("断开失败，正在自动释放资源...");
+                break;
+            }
+            continue;
+        }
     }
 }
+
 
 void send_message(char *message, int lent) {
     int package_num = lent / Mlenx + (lent % Mlenx != 0);

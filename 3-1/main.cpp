@@ -42,7 +42,7 @@ char sum_cal(char *arr, int lent) {
 void wait_shake_hand() {
     while (1) {
         char recv[2];
-        int begintime = clock();
+        int connect = 0;
         int lentmp = sizeof(clientAddr);
         while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
         if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_1)
@@ -54,9 +54,28 @@ void wait_shake_hand() {
             while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
             if (sum_cal(recv, 2) == 0 && recv[1] == SHAKE_1)
                 continue;
-            if (sum_cal(recv, 2) == 0 || recv[1] == SHAKE_3)
-                break;
+            if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_3) {
+                printf("链接建立失败，请重启客户端。");
+                connect = 1;
+            }
+            break;
         }
+        if (connect == 1)
+            continue;
+        break;
+    }
+}
+
+void wait_wave_hand() {
+    while (1) {
+        char recv[2];
+        int lentmp = sizeof(clientAddr);
+        while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
+        if (sum_cal(recv, 2) != 0 || recv[1] != WAVE_1)
+            continue;
+        recv[1] = WAVE_2;
+        recv[0] = sum_cal(recv + 1, 1);
+        sendto(server, recv, 2, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
         break;
     }
 }
@@ -130,7 +149,8 @@ int main() {
     wait_shake_hand();
     printf("用户已接入。\n正在接收数据...\n");
     recv_message(buffer, len);
-    printf("第一条信息接收成功。")
+    printf("第一条信息接收成功。");
+
 
     return 0;
 }
