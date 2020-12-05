@@ -12,29 +12,32 @@
 
 using namespace std;
 const int Mlenx = 509;
-const char ACK = 0x03;
-const char NAK = 0x07;
-const char LAST_PACK = 0x18;
-const char NOTLAST_PACK = 0x08;
-const char SHAKE_1 = 0x01;
-const char SHAKE_2 = 0x02;
-const char SHAKE_3 = 0x04;
-const char WAVE_1 = 0x80;
-const char WAVE_2 = 0x40;
+const unsigned char ACK = 0x03;
+const unsigned char NAK = 0x07;
+const unsigned char LAST_PACK = 0x18;
+const unsigned char NOTLAST_PACK = 0x08;
+const unsigned char SHAKE_1 = 0x01;
+const unsigned char SHAKE_2 = 0x02;
+const unsigned char SHAKE_3 = 0x04;
+const unsigned char WAVE_1 = 0x80;
+const unsigned char WAVE_2 = 0x40;
 const int TIMEOUT = 500;//毫秒
-char buffer[2000000];
+char buffer[200000000];
 int len;
 
-SOCKET client = socket(AF_INET, SOCK_DGRAM, 0);
+SOCKET client;
 SOCKADDR_IN serverAddr, clientAddr;
 
-char sum_cal(char *arr, int lent) {
+unsigned char sum_cal(char *arr, int lent) {
     if (lent == 0)
         return ~(0);
-    char ret = arr[0];
+    unsigned char ret = arr[0];
 
     for (int i = 1; i < lent; i++) {
-        ret = arr[i] + (char) ((int(arr[i]) + ret) % ((1 << 8) - 1));
+        unsigned int tmp = ret + (unsigned char) arr[i];
+        tmp = tmp / (1 << 8) + tmp % (1 << 8);
+        tmp = tmp / (1 << 8) + tmp % (1 << 8);
+        ret = tmp;
     }
     return ~ret;
 }
@@ -78,7 +81,7 @@ bool send_package(char *message, int lent, int order, int last = 0) {
                 fail_send = 1;
                 break;
             }
-        if (fail_send == 0 && sum_cal(recv, 3) == 0 && recv[1] == ACK && recv[2] == order)
+        if (fail_send == 0 && sum_cal(recv, 3) == 0 && recv[1] == ACK && recv[2] == (char)order)
             return true;
     }
 }
@@ -148,9 +151,15 @@ void wave_hand() {
 void send_message(char *message, int lent) {
     int package_num = lent / Mlenx + (lent % Mlenx != 0);
     static int order = 0;
-    for (int i = 0; i < package_num; i++)
+    for (int i = 0; i < package_num; i++) {
+
         send_package(message + i * Mlenx, i == package_num - 1 ? lent - (package_num - 1) * Mlenx : Mlenx, order++,
                      i == package_num - 1);
+
+        order=order%(1<<8);
+        if (i % 100 == 0)
+            printf("此文件已经发送%.2f%%\n", (float) i / package_num*100);
+    }
 }
 
 
@@ -163,7 +172,7 @@ int main() {
     }
     string serverip;
     while (1) {
-        printf("请输入接收方ip地址\n");
+        printf("请输入接收方ip地址:\n");
         getline(cin, serverip);
 
         if (inet_addr(serverip.c_str()) == INADDR_NONE) {
@@ -178,7 +187,7 @@ int main() {
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = inet_addr(serverip.c_str());
-
+    client = socket(AF_INET, SOCK_DGRAM, 0);
     if (client == INVALID_SOCKET) {
         printf("creat udp socket error");
         return 0;
@@ -187,14 +196,14 @@ int main() {
     while (1) {
         printf("请输入要发送的文件名：");
         cin >> filename;
-        ifstream fin(filename.c_str(), fstream::binary);
+        ifstream fin(filename.c_str(), ifstream::binary);
         if (!fin) {
             printf("文件未找到，555~\n");
             continue;
         }
-        char t = fin.get();
-        while (!fin) {
-            buffer[++len] = t;
+        unsigned char t = fin.get();
+        while (fin) {
+            buffer[len++] = t;
             t = fin.get();
         }
         fin.close();

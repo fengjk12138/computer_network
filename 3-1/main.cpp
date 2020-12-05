@@ -11,30 +11,33 @@ using namespace std;
 
 using namespace std;
 const int Mlenx = 509;
-const char ACK = 0x03;
-const char NAK = 0x07;
-const char LAST_PACK = 0x18;
-const char NOTLAST_PACK = 0x08;
-const char SHAKE_1 = 0x01;
-const char SHAKE_2 = 0x02;
-const char SHAKE_3 = 0x04;
-const char WAVE_1 = 0x80;
-const char WAVE_2 = 0x40;
+const unsigned char ACK = 0x03;
+const unsigned char NAK = 0x07;
+const unsigned char LAST_PACK = 0x18;
+const unsigned char NOTLAST_PACK = 0x08;
+const unsigned char SHAKE_1 = 0x01;
+const unsigned char SHAKE_2 = 0x02;
+const unsigned char SHAKE_3 = 0x04;
+const unsigned char WAVE_1 = 0x80;
+const unsigned char WAVE_2 = 0x40;
 const int TIMEOUT = 500;//毫秒
-char buffer[2000000];
+char buffer[200000000];
 int len;
 
 SOCKADDR_IN serverAddr, clientAddr;
-SOCKET server = socket(AF_INET, SOCK_DGRAM, 0); //选择udp协议
+SOCKET server; //选择udp协议
 
 
-char sum_cal(char *arr, int lent) {
+unsigned char sum_cal(char *arr, int lent) {
     if (lent == 0)
         return ~(0);
-    char ret = arr[0];
+    unsigned char ret = arr[0];
 
-    for (int i = 1; i < lent; i++) {
-        ret = arr[i] + (char) ((int(arr[i]) + ret) % ((1 << 8) - 1));
+    for (int i = 1; i < lent; i++){
+        unsigned int tmp = ret + (unsigned char) arr[i];
+        tmp = tmp / (1 << 8) + tmp % (1 << 8);
+        tmp = tmp / (1 << 8) + tmp % (1 << 8);
+        ret = tmp;
     }
     return ~ret;
 }
@@ -47,6 +50,7 @@ void wait_shake_hand() {
         while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
         if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_1)
             continue;
+
         while (1) {
             recv[1] = SHAKE_2;
             recv[0] = sum_cal(recv + 1, 1);
@@ -71,7 +75,7 @@ void wait_wave_hand() {
         char recv[2];
         int lentmp = sizeof(clientAddr);
         while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
-        if (sum_cal(recv, 2) != 0 || recv[1] != WAVE_1)
+        if (sum_cal(recv, 2) != 0 || recv[1] != (char)WAVE_1)
             continue;
         recv[1] = WAVE_2;
         recv[0] = sum_cal(recv + 1, 1);
@@ -83,10 +87,11 @@ void wait_wave_hand() {
 void recv_message(char *message, int &len_recv) {
     char recv[Mlenx + 4];
     int lentmp = sizeof(clientAddr);
-    static int last_order = -1;
-    len_recv = -1;
+    static char last_order = -1;
+    len_recv = 0;
     while (1) {
         while (1) {
+            memset(recv,0,sizeof(recv));
             while (recvfrom(server, recv, Mlenx + 4, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
             char send[3];
             if (sum_cal(recv, Mlenx + 4) == 0) {
@@ -100,18 +105,22 @@ void recv_message(char *message, int &len_recv) {
                 send[2] = recv[2];//NAK序号可能不准确
                 send[0] = sum_cal(send + 1, 2);
                 sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
+                cout << "NAK" << endl;
                 continue;
             }
         }
         if (last_order == recv[2])
             continue; //和上一个数据包序号相同，丢弃
+        last_order = recv[2];
+//        printf("%d\n",last_order);
         if (LAST_PACK == recv[1]) {
             for (int i = 4; i < recv[3] + 4; i++)
-                message[++len_recv] = recv[i];
+                message[len_recv++] = recv[i];
+
             break;
         } else {
             for (int i = 3; i < Mlenx + 3; i++)
-                message[++len_recv] = recv[i];
+                message[len_recv++] = recv[i];
         }
     }
 }
@@ -130,7 +139,7 @@ int main() {
     serverAddr.sin_port = htons(Port); //端口
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-
+    server = socket(AF_INET, SOCK_DGRAM, 0);
     if (server == INVALID_SOCKET) {
         printf("create fail");
         closesocket(server);
@@ -145,12 +154,22 @@ int main() {
     }
 
     //等待接入
-    printf("等待接入");
+    printf("等待接入...\n");
     wait_shake_hand();
     printf("用户已接入。\n正在接收数据...\n");
     recv_message(buffer, len);
     printf("第一条信息接收成功。");
-
-
+    buffer[len] = 0;
+    cout << buffer << endl;
+    string file_name(buffer);
+    printf("开始接收第二条信息...\n");
+    recv_message(buffer, len);
+    printf("第二条信息接收成功。\n");
+    ofstream fout(file_name.c_str(), ofstream::binary);
+    for (int i = 0; i < len; i++)
+        fout << buffer[i];
+    fout.close();
+    wait_wave_hand();
+    printf("链接断开");
     return 0;
 }
