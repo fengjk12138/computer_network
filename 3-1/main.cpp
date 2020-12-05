@@ -10,7 +10,7 @@
 using namespace std;
 
 using namespace std;
-const int Mlenx = 510;
+const int Mlenx = 509;
 const char ACK = 0x03;
 const char NAK = 0x07;
 const char LAST_PACK = 0x18;
@@ -47,44 +47,54 @@ void wait_shake_hand() {
         while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
         if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_1)
             continue;
-        recv[1] = SHAKE_2;
-        recv[0] = sum_cal(recv + 1, 1);
-        sendto(server, recv, 2, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
-        while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
-        if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_3) {
-            printf("链接建立失败。\n");
-            exit(0);
+        while (1) {
+            recv[1] = SHAKE_2;
+            recv[0] = sum_cal(recv + 1, 1);
+            sendto(server, recv, 2, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
+            while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
+            if (sum_cal(recv, 2) == 0 && recv[1] == SHAKE_1)
+                continue;
+            if (sum_cal(recv, 2) == 0 || recv[1] == SHAKE_3)
+                break;
         }
         break;
     }
 }
 
 void recv_message(char *message, int &len_recv) {
-    char recv[512];
+    char recv[Mlenx + 4];
     int lentmp = sizeof(clientAddr);
-    int last_order=-1;
-    while(1) {
-        while(1) {
-            while (recvfrom(server, recv, 512, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
-            char send[2];
-            if (sum_cal(recv,512)==0)
-            {
-                send[1]=ACK;
-                send[0]=sum_cal(send+1,1);
-                sendto(server, recv, 2, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
+    static int last_order = -1;
+    len_recv = -1;
+    while (1) {
+        while (1) {
+            while (recvfrom(server, recv, Mlenx + 4, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
+            char send[3];
+            if (sum_cal(recv, Mlenx + 4) == 0) {
+                send[1] = ACK;
+                send[2] = recv[2];
+                send[0] = sum_cal(send + 1, 2);
+                sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
                 break;
-            }else{
-                send[1]=NAK;
-                send[0]=sum_cal(send+1,1);
-                sendto(server, recv, 2, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
+            } else {
+                send[1] = NAK;
+                send[2] = recv[2];//NAK序号可能不准确
+                send[0] = sum_cal(send + 1, 2);
+                sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
                 continue;
             }
         }
-        if(last_order==recv[1])
-
-        break;
+        if (last_order == recv[2])
+            continue; //和上一个数据包序号相同，丢弃
+        if (LAST_PACK == recv[1]) {
+            for (int i = 4; i < recv[3] + 4; i++)
+                message[++len_recv] = recv[i];
+            break;
+        } else {
+            for (int i = 3; i < Mlenx + 3; i++)
+                message[++len_recv] = recv[i];
+        }
     }
-
 }
 
 int main() {
@@ -120,7 +130,7 @@ int main() {
     wait_shake_hand();
     printf("用户已接入。\n正在接收数据...\n");
     recv_message(buffer, len);
-
+    printf("第一条信息接收成功。")
 
     return 0;
 }

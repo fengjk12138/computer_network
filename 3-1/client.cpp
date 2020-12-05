@@ -11,7 +11,7 @@
 #include <time.h>
 
 using namespace std;
-const int Mlenx = 510;
+const int Mlenx = 509;
 const char ACK = 0x03;
 const char NAK = 0x07;
 const char LAST_PACK = 0x18;
@@ -43,31 +43,43 @@ bool send_package(char *message, int lent, int order, int last = 0) {
     if (lent > Mlenx) {
         return false;
     }
-    if (last == false && lent != 510) {
+    if (last == false && lent != Mlenx) {
         return false;
     }
-    char *tmp = new char[lent + 3];
-    tmp[1] = last ? LAST_PACK : NOTLAST_PACK;
-    tmp[2] = order;
-    for (int i = 3; i < lent + 3; i++)
-        tmp[i] = message[i - 3];
-    tmp[0] = sum_cal(tmp + 1, lent + 2);
+    char *tmp;
+    int tmp_len;
+
+    if (last) {
+        tmp = new char[lent + 4];
+        tmp[1] = LAST_PACK;
+        tmp[2] = order;
+        tmp[3] = lent;
+        for (int i = 4; i < lent + 4; i++)
+            tmp[i] = message[i - 4];
+        tmp[0] = sum_cal(tmp + 1, lent + 3);
+        tmp_len = lent + 4;
+    } else {
+        tmp = new char[lent + 3];
+        tmp[1] = NOTLAST_PACK;
+        tmp[2] = order;
+        for (int i = 3; i < lent + 3; i++)
+            tmp[i] = message[i - 3];
+        tmp[0] = sum_cal(tmp + 1, lent + 2);
+        tmp_len = lent + 3;
+    }
     while (1) {
-        sendto(client, tmp, lent + 3, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+        sendto(client, tmp, tmp_len, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
         int begintime = clock();
-        char recv[2];
-        int lentmp = sizeof(clientAddr);
+        char recv[3];
+        int lentmp = sizeof(serverAddr);
         int fail_send = 0;
-        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+        while (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) == SOCKET_ERROR)
             if (clock() - begintime > TIMEOUT) {
                 fail_send = 1;
                 break;
             }
-        if (fail_send == 0) {
-            if (sum_cal(recv, 2) == 0 && recv[1] == ACK)
-                return true;
-            else fail_send = 1;
-        }
+        if (fail_send == 0 && sum_cal(recv, 3) == 0 && recv[1] == ACK && recv[2] == order)
+            return true;
     }
 }
 
@@ -83,22 +95,20 @@ void shake_hand() {
         char recv[2];
         int lentmp = sizeof(clientAddr);
         int fail_send = 0;
-        while (recvfrom(client, recv, 2, 0, (sockaddr *) &clientAddr, &len) == SOCKET_ERROR)
+        while (recvfrom(client, recv, 2, 0, (sockaddr *) &serverAddr, &lentmp) == SOCKET_ERROR)
             if (clock() - begintime > TIMEOUT) {
                 fail_send = 1;
                 break;
             }
         //接受shake_2并校验
-        if (fail_send == 0) {
-            if (sum_cal(recv, 2) != 0 || recv[1] != SHAKE_2)
-                continue;
-        } else continue;
-
-        //发送shake_3
-        tmp[1] = SHAKE_3;
-        tmp[0] = sum_cal(tmp + 1, 1);
-        sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
-        break;
+        if (fail_send == 0 && sum_cal(recv, 2) == 0 && recv[1] == SHAKE_2) {
+            {
+                //发送shake_3
+                tmp[1] = SHAKE_3;
+                tmp[0] = sum_cal(tmp + 1, 1);
+                sendto(client, tmp, 2, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+                break;
+            }
     }
 }
 
@@ -129,8 +139,9 @@ void wave_hand() {
 
 void send_message(char *message, int lent) {
     int package_num = lent / Mlenx + (lent % Mlenx != 0);
+    static int order = 0;
     for (int i = 0; i < package_num; i++)
-        send_package(message + i * Mlenx, i == package_num - 1 ? lent - (package_num - 1) * Mlenx : Mlenx, i,
+        send_package(message + i * Mlenx, i == package_num - 1 ? lent - (package_num - 1) * Mlenx : Mlenx, order++,
                      i == package_num - 1);
 }
 
@@ -184,7 +195,7 @@ int main() {
     printf("链接建立中...\n");
     shake_hand();
     printf("链接建立完成。 \n正在发送信息...\n");
-    send_message((char*)(filename.c_str()),filename.length());
+    send_message((char *) (filename.c_str()), filename.length());
     printf("文件名发送完毕，正在发送文件内容...\n");
     send_message(buffer, len);
     printf("文件内容发送完毕。\n 开始断开连接...\n");
