@@ -1,3 +1,0 @@
-"D:\JetBrain\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -E rm -f CMakeFiles\network.dir/objects.a
-D:\mingw64\bin\ar.exe cr CMakeFiles\network.dir/objects.a @CMakeFiles\network.dir\objects1.rsp
-D:\mingw64\bin\g++.exe -g   -Wl,--whole-archive CMakeFiles\network.dir/objects.a -Wl,--no-whole-archive  -o network.exe -Wl,--out-implib,libnetwork.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\network.dir\linklibs.rsp
