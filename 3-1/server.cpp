@@ -127,10 +127,7 @@ void recv_message(char *message, int &len_recv) {
 
 int main() {
     //设置非阻塞
-    struct timeval read_timeout;
-    read_timeout.tv_sec = 0;
-    read_timeout.tv_usec = 10;
-    setsockopt(socketfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
+
     WSADATA wsadata;
     int nError = WSAStartup(MAKEWORD(2, 2), &wsadata);
     if (nError) {
@@ -145,6 +142,10 @@ int main() {
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     server = socket(AF_INET, SOCK_DGRAM, 0);
+
+    int time_out=1;//1ms超时
+    setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (char *)&time_out, sizeof(time_out));
+
     if (server == INVALID_SOCKET) {
         printf("create fail");
         closesocket(server);
