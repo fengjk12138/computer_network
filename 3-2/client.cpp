@@ -142,29 +142,31 @@ void shake_hand() {
 void send_message(char *message, int lent) {
     queue<int> timer_list;
     int leave_cnt = 0;
-    int base = 0;
-    int next_package = 0;
+    static int base = 0;
+    int has_send = 0;
+    int next_package = base;
     bool last_send = 0;
     int tot_package = lent / Mlenx + (lent % Mlenx != 0);
     while (1) {
-        if (base == tot_package)
+        if (has_send == tot_package)
             break;
         if (timer_list.size() < WINDOW_SIZE && last_send == false) {
-            send_package(message + next_package * Mlenx,
-                         next_package == tot_package - 1 ? lent - (tot_package - 1) * Mlenx : Mlenx,
+            send_package(message + has_send * Mlenx,
+                         has_send == tot_package - 1 ? lent - (tot_package - 1) * Mlenx : Mlenx,
                          next_package % ((int) UCHAR_MAX + 1),
-                         next_package == tot_package - 1);
+                         has_send == tot_package - 1);
             timer_list.push(clock());
-            last_send = (next_package == tot_package - 1);
+            last_send = (has_send == tot_package - 1);
             next_package++;
         }
 
         char recv[3];
         int lentmp = sizeof(serverAddr);
         if (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR && sum_cal(recv, 3) == 0 &&
-            recv[1] == ACK && recv[2] == base % ((int) UCHAR_MAX + 1)) {
+            recv[1] == ACK && (unsigned char) recv[2] == base % ((int) UCHAR_MAX + 1)) {
             timer_list.pop();
             base++;
+            has_send++;
             leave_cnt = 0;
         } else {
             if (clock() - timer_list.front() > TIMEOUT) {
@@ -173,6 +175,7 @@ void send_message(char *message, int lent) {
                 while (!timer_list.empty()) timer_list.pop();
             }
         }
+
         if (leave_cnt >= 5) {
             wave_hand();
             return;
