@@ -9,6 +9,7 @@
 #include <fstream>
 #include <vector>
 #include <time.h>
+#include <queue>
 
 using namespace std;
 const int Mlenx = 509;
@@ -21,6 +22,7 @@ const unsigned char SHAKE_2 = 0x02;
 const unsigned char SHAKE_3 = 0x04;
 const unsigned char WAVE_1 = 0x80;
 const unsigned char WAVE_2 = 0x40;
+int WINDOW_SIZE;
 const int TIMEOUT = 500;//毫秒
 char buffer[200000000];
 int len;
@@ -41,6 +43,7 @@ unsigned char sum_cal(char *arr, int lent) {
     }
     return ~ret;
 }
+
 void wave_hand() {
     int tot_fail = 0;
     while (1) {
@@ -101,27 +104,8 @@ bool send_package(char *message, int lent, int order, int last = 0) {
         tmp[0] = sum_cal(tmp + 1, lent + 2);
         tmp_len = lent + 3;
     }
-    int send_to_cnt=0;
-    while (1) {
-        send_to_cnt++;
-        sendto(client, tmp, tmp_len, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
-        int begintime = clock();
-        char recv[3];
-        int lentmp = sizeof(serverAddr);
-        int fail_send = 0;
-        while (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) == SOCKET_ERROR)
-            if (clock() - begintime > TIMEOUT) {
-                fail_send = 1;
-                if(send_to_cnt==5)
-                {
-                    wave_hand();
-                    return 0;
-                }
-                break;
-            }
-        if (fail_send == 0 && sum_cal(recv, 3) == 0 && recv[1] == ACK && recv[2] == (char)order)
-            return true;
-    }
+    sendto(client, tmp, tmp_len, 0, (sockaddr *) &serverAddr, sizeof(serverAddr));
+    return true;
 }
 
 
@@ -156,22 +140,51 @@ void shake_hand() {
 
 
 void send_message(char *message, int lent) {
-    int package_num = lent / Mlenx + (lent % Mlenx != 0);
-    static int order = 0;
-    for (int i = 0; i < package_num; i++) {
+    queue<int> timer_list;
+    int leave_cnt = 0;
+    int base = 0;
+    int next_package = 0;
+    bool last_send = 0;
+    int tot_package = lent / Mlenx + (lent % Mlenx != 0);
+    while (1) {
+        if (base == tot_package)
+            break;
+        if (timer_list.size() < WINDOW_SIZE && last_send == false) {
+            send_package(message + next_package * Mlenx,
+                         next_package == tot_package - 1 ? lent - (tot_package - 1) * Mlenx : Mlenx,
+                         next_package % ((int) UCHAR_MAX + 1),
+                         next_package == tot_package - 1);
+            timer_list.push(clock());
+            last_send = (next_package == tot_package - 1);
+            next_package++;
+        }
 
-        send_package(message + i * Mlenx, i == package_num - 1 ? lent - (package_num - 1) * Mlenx : Mlenx, order++,
-                     i == package_num - 1);
-
-        order=order%(1<<8);
-        if (i % 100 == 0)
-            printf("此文件已经发送%.2f%%\n", (float) i / package_num*100);
+        char recv[3];
+        int lentmp = sizeof(serverAddr);
+        if (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR && sum_cal(recv, 3) == 0 &&
+            recv[1] == ACK && recv[2] == base % ((int) UCHAR_MAX + 1)) {
+            timer_list.pop();
+            base++;
+            leave_cnt = 0;
+        } else {
+            if (clock() - timer_list.front() > TIMEOUT) {
+                next_package = base;
+                leave_cnt++;
+                while (!timer_list.empty()) timer_list.pop();
+            }
+        }
+        if (leave_cnt >= 5) {
+            wave_hand();
+            return;
+        }
+        if (base % 100 == 0)
+            printf("此文件已经发送%.2f%%\n", (float) base / tot_package * 100);
     }
 }
 
 
 int main() {
-    //设置非阻塞
+
 
     WSADATA wsadata;
     int error = WSAStartup(MAKEWORD(2, 2), &wsadata);
@@ -197,9 +210,9 @@ int main() {
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = inet_addr(serverip.c_str());
     client = socket(AF_INET, SOCK_DGRAM, 0);
-
-    int time_out=1;//1ms超时
-    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (char *)&time_out, sizeof(time_out));
+    //设置非阻塞
+    int time_out = 1;//1ms超时
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (char *) &time_out, sizeof(time_out));
 
     if (client == INVALID_SOCKET) {
         printf("creat udp socket error");
@@ -222,6 +235,9 @@ int main() {
         fin.close();
         break;
     }
+    printf("请输入发送窗口大小：\n");
+    cin >> WINDOW_SIZE;
+    WINDOW_SIZE %= UCHAR_MAX; //防止窗口大小大于序号域长度
     printf("链接建立中...\n");
     shake_hand();
     printf("链接建立完成。 \n正在发送信息...\n");

@@ -33,7 +33,7 @@ unsigned char sum_cal(char *arr, int lent) {
         return ~(0);
     unsigned char ret = arr[0];
 
-    for (int i = 1; i < lent; i++){
+    for (int i = 1; i < lent; i++) {
         unsigned int tmp = ret + (unsigned char) arr[i];
         tmp = tmp / (1 << 8) + tmp % (1 << 8);
         tmp = tmp / (1 << 8) + tmp % (1 << 8);
@@ -75,7 +75,7 @@ void wait_wave_hand() {
         char recv[2];
         int lentmp = sizeof(clientAddr);
         while (recvfrom(server, recv, 2, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
-        if (sum_cal(recv, 2) != 0 || recv[1] != (char)WAVE_1)
+        if (sum_cal(recv, 2) != 0 || recv[1] != (char) WAVE_1)
             continue;
         recv[1] = WAVE_2;
         recv[0] = sum_cal(recv + 1, 1);
@@ -87,32 +87,23 @@ void wait_wave_hand() {
 void recv_message(char *message, int &len_recv) {
     char recv[Mlenx + 4];
     int lentmp = sizeof(clientAddr);
-    static char last_order = -1;
+    static unsigned char last_order = 0;
     len_recv = 0;
     while (1) {
         while (1) {
-            memset(recv,0,sizeof(recv));
+            memset(recv, 0, sizeof(recv));
             while (recvfrom(server, recv, Mlenx + 4, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
             char send[3];
-            if (sum_cal(recv, Mlenx + 4) == 0) {
+            if (sum_cal(recv, Mlenx + 4) == 0 && (unsigned char) recv[2] == last_order) {
+                last_order++;
                 send[1] = ACK;
                 send[2] = recv[2];
                 send[0] = sum_cal(send + 1, 2);
                 sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
                 break;
-            } else {
-                send[1] = NAK;
-                send[2] = recv[2];//NAK序号可能不准确
-                send[0] = sum_cal(send + 1, 2);
-                sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
-                cout << "NAK" << endl;
-                continue;
             }
         }
-        if (last_order == recv[2])
-            continue; //和上一个数据包序号相同，丢弃
-        last_order = recv[2];
-//        printf("%d\n",last_order);
+
         if (LAST_PACK == recv[1]) {
             for (int i = 4; i < recv[3] + 4; i++)
                 message[len_recv++] = recv[i];
@@ -126,7 +117,7 @@ void recv_message(char *message, int &len_recv) {
 }
 
 int main() {
-    //设置非阻塞
+
 
     WSADATA wsadata;
     int nError = WSAStartup(MAKEWORD(2, 2), &wsadata);
@@ -142,9 +133,9 @@ int main() {
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     server = socket(AF_INET, SOCK_DGRAM, 0);
-
-    int time_out=1;//1ms超时
-    setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (char *)&time_out, sizeof(time_out));
+    //设置非阻塞
+    int time_out = 1;//1ms超时
+    setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, (char *) &time_out, sizeof(time_out));
 
     if (server == INVALID_SOCKET) {
         printf("create fail");
