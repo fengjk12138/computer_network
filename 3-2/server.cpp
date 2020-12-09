@@ -94,14 +94,19 @@ void recv_message(char *message, int &len_recv) {
             memset(recv, 0, sizeof(recv));
             while (recvfrom(server, recv, Mlenx + 4, 0, (sockaddr *) &clientAddr, &lentmp) == SOCKET_ERROR);
             char send[3];
+            int flag = 0;
             if (sum_cal(recv, Mlenx + 4) == 0 && (unsigned char) recv[2] == last_order) {
                 last_order++;
-                send[1] = ACK;
-                send[2] = recv[2];
-                send[0] = sum_cal(send + 1, 2);
-                sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
-                break;
+                flag = 1;
             }
+
+
+            send[1] = ACK;
+            send[2] = last_order - 1;
+            send[0] = sum_cal(send + 1, 2);
+            sendto(server, send, 3, 0, (sockaddr *) &clientAddr, sizeof(clientAddr));
+            if (flag)
+                break;
         }
 
         if (LAST_PACK == recv[1]) {
