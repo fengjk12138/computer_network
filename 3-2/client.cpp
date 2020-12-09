@@ -158,6 +158,7 @@ void send_message(char *message, int lent) {
             timer_list.push(clock());
             last_send = (has_send == tot_package - 1);
             next_package++;
+            has_send++;
         }
 
         char recv[3];
@@ -166,12 +167,12 @@ void send_message(char *message, int lent) {
             recv[1] == ACK && (unsigned char) recv[2] == base % ((int) UCHAR_MAX + 1)) {
             timer_list.pop();
             base++;
-            has_send++;
             leave_cnt = 0;
         } else {
             if (clock() - timer_list.front() > TIMEOUT) {
                 next_package = base;
                 leave_cnt++;
+                has_send-=timer_list.size();
                 while (!timer_list.empty()) timer_list.pop();
             }
         }
