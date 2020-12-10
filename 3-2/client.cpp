@@ -169,9 +169,10 @@ void send_message(char *message, int lent) {
             while (timer_list.front().second != (unsigned char) recv[2]) {
                 has_send_succ++;
                 base++;
+                in_list[timer_list.front().second] = 0;
                 timer_list.pop();
             }
-
+            in_list[timer_list.front().second] = 0;
             has_send_succ++;
             base++;
             leave_cnt = 0;
