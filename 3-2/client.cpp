@@ -138,25 +138,26 @@ void shake_hand() {
     }
 }
 
+bool in_list[UCHAR_MAX + 1];
 
 void send_message(char *message, int lent) {
-    queue<int> timer_list;
+    queue<pair<int, int>> timer_list;//timer, order
     int leave_cnt = 0;
     static int base = 0;
     int has_send = 0;
     int next_package = base;
-    bool last_send = 0;
+    int has_send_succ = 0;
     int tot_package = lent / Mlenx + (lent % Mlenx != 0);
     while (1) {
-        if (has_send == tot_package)
+        if (has_send_succ == tot_package)
             break;
-        if (timer_list.size() < WINDOW_SIZE && last_send == false) {
+        if (timer_list.size() < WINDOW_SIZE && has_send != tot_package) {
             send_package(message + has_send * Mlenx,
                          has_send == tot_package - 1 ? lent - (tot_package - 1) * Mlenx : Mlenx,
                          next_package % ((int) UCHAR_MAX + 1),
                          has_send == tot_package - 1);
-            timer_list.push(clock());
-            last_send = (has_send == tot_package - 1);
+            timer_list.push(make_pair(clock(), next_package % ((int) UCHAR_MAX + 1)));
+            in_list[next_package % ((int) UCHAR_MAX + 1)] = 1;
             next_package++;
             has_send++;
         }
@@ -164,15 +165,23 @@ void send_message(char *message, int lent) {
         char recv[3];
         int lentmp = sizeof(serverAddr);
         if (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR && sum_cal(recv, 3) == 0 &&
-            recv[1] == ACK && (unsigned char) recv[2] == base % ((int) UCHAR_MAX + 1)) {
-            timer_list.pop();
+            recv[1] == ACK && in_list[(unsigned char) recv[2]]) {
+            while (timer_list.front().second != (unsigned char) recv[2]) {
+                has_send_succ++;
+                base++;
+                timer_list.pop();
+            }
+
+            has_send_succ++;
             base++;
             leave_cnt = 0;
+            timer_list.pop();
+
         } else {
-            if (clock() - timer_list.front() > TIMEOUT) {
+            if (clock() - timer_list.front().first > TIMEOUT) {
                 next_package = base;
                 leave_cnt++;
-                has_send-=timer_list.size();
+                has_send -= timer_list.size();
                 while (!timer_list.empty()) timer_list.pop();
             }
         }
