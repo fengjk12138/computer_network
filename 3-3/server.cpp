@@ -10,7 +10,7 @@
 using namespace std;
 
 using namespace std;
-const int Mlenx = 250;
+const int Mlenx = 240;
 const unsigned char ACK = 0x03;
 const unsigned char NAK = 0x07;
 const unsigned char LAST_PACK = 0x18;
@@ -20,7 +20,7 @@ const unsigned char SHAKE_2 = 0x02;
 const unsigned char SHAKE_3 = 0x04;
 const unsigned char WAVE_1 = 0x80;
 const unsigned char WAVE_2 = 0x40;
-const int TIMEOUT = 500;//毫秒
+const int TIMEOUT = 2000;//毫秒
 char buffer[200000000];
 int len;
 
@@ -110,7 +110,7 @@ void recv_message(char *message, int &len_recv) {
         }
 
         if (LAST_PACK == recv[1]) {
-            for (int i = 4; i < recv[3] + 4; i++)
+            for (int i = 4; i < (unsigned char)recv[3] + 4; i++)
                 message[len_recv++] = recv[i];
 
             break;

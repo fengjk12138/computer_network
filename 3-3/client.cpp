@@ -12,7 +12,7 @@
 #include <queue>
 
 using namespace std;
-const int Mlenx = 250;
+const int Mlenx = 240;
 const unsigned char ACK = 0x03;
 const unsigned char NAK = 0x07;
 const unsigned char LAST_PACK = 0x18;
@@ -23,7 +23,7 @@ const unsigned char SHAKE_3 = 0x04;
 const unsigned char WAVE_1 = 0x80;
 const unsigned char WAVE_2 = 0x40;
 int WINDOW_SIZE;
-const int TIMEOUT = 500;//毫秒
+const int TIMEOUT = 2000;//毫秒
 char buffer[200000000];
 int len;
 
@@ -154,10 +154,13 @@ void send_message(char *message, int lent) {
     int next_package = base;
     int has_send_succ = 0;
     int tot_package = lent / Mlenx + (lent % Mlenx != 0);
+
     while (1) {
         if (has_send_succ == tot_package)
             break;
+
         if (timer_list.size() < WINDOW_SIZE && has_send != tot_package) {
+//            cerr << next_package << " windo=" << WINDOW_SIZE << endl;
             send_package(message + has_send * Mlenx,
                          has_send == tot_package - 1 ? lent - (tot_package - 1) * Mlenx : Mlenx,
                          next_package % ((int) UCHAR_MAX + 1),
@@ -174,7 +177,10 @@ void send_message(char *message, int lent) {
         bool my_tmp_save = (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR &&
                             sum_cal(recv, 3) == 0 &&
                             recv[1] == ACK);
+//        if (my_tmp_save)
+//            cerr << "ack " << (unsigned int) recv[2] << endl;
         if (my_tmp_save && in_list[(unsigned char) recv[2]]) {
+
             while (timer_list.front().second != (unsigned char) recv[2]) {
                 has_send_succ++;
                 base++;
@@ -208,17 +214,24 @@ void send_message(char *message, int lent) {
 
         } else {
             if (my_tmp_save) {
-                if (last_ask == (unsigned char) recv[2])
+                if (last_ask == (unsigned char) recv[2]) {
                     dupack_cnt++;
+                    if (status == 2) {
+                        WINDOW_SIZE++;
+                        WINDOW_SIZE %= UCHAR_MAX;
+                    }
+                }
             }
-            if (dupack_cnt == 3 || clock() - timer_list.front().first > TIMEOUT) {
+            if ((dupack_cnt == 3 && status != 2) || clock() - timer_list.front().first > TIMEOUT) {
                 next_package = base;
                 leave_cnt++;
                 has_send -= timer_list.size();
                 while (!timer_list.empty()) timer_list.pop();
+//                cerr << "pack_loss" << endl;
                 if (dupack_cnt == 3) {
                     now_window_has_send_succ = 0;
                     status = 2;
+                    dupack_cnt = 0;
                     ssthresh = WINDOW_SIZE / 2;
                     WINDOW_SIZE = ssthresh + 3;
 
@@ -282,7 +295,7 @@ int main() {
         break;
     }
 
-    int port = 11451;
+    int port = 4545;
 
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
