@@ -10,7 +10,7 @@
 using namespace std;
 
 using namespace std;
-const int Mlenx = 509;
+const int Mlenx = 250;
 const unsigned char ACK = 0x03;
 const unsigned char NAK = 0x07;
 const unsigned char LAST_PACK = 0x18;

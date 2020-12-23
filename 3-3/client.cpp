@@ -12,7 +12,7 @@
 #include <queue>
 
 using namespace std;
-const int Mlenx = 509;
+const int Mlenx = 250;
 const unsigned char ACK = 0x03;
 const unsigned char NAK = 0x07;
 const unsigned char LAST_PACK = 0x18;
@@ -141,10 +141,16 @@ void shake_hand() {
 bool in_list[UCHAR_MAX + 1];
 
 void send_message(char *message, int lent) {
+    int ssthresh = UCHAR_MAX;
+    WINDOW_SIZE = 1;
+    int status = 0;// 0 慢启动 1 拥塞控制 2 快速恢复
+    int now_window_has_send_succ = 0;
     queue<pair<int, int>> timer_list;//timer, order
     int leave_cnt = 0;
     static int base = 0;
     int has_send = 0;
+    int last_ask = -1;
+    int dupack_cnt = 0;
     int next_package = base;
     int has_send_succ = 0;
     int tot_package = lent / Mlenx + (lent % Mlenx != 0);
@@ -160,30 +166,69 @@ void send_message(char *message, int lent) {
             in_list[next_package % ((int) UCHAR_MAX + 1)] = 1;
             next_package++;
             has_send++;
+
         }
 
         char recv[3];
         int lentmp = sizeof(serverAddr);
-        if (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR && sum_cal(recv, 3) == 0 &&
-            recv[1] == ACK && in_list[(unsigned char) recv[2]]) {
+        bool my_tmp_save = (recvfrom(client, recv, 3, 0, (sockaddr *) &serverAddr, &lentmp) != SOCKET_ERROR &&
+                            sum_cal(recv, 3) == 0 &&
+                            recv[1] == ACK);
+        if (my_tmp_save && in_list[(unsigned char) recv[2]]) {
             while (timer_list.front().second != (unsigned char) recv[2]) {
                 has_send_succ++;
                 base++;
+                now_window_has_send_succ++;
                 in_list[timer_list.front().second] = 0;
                 timer_list.pop();
             }
             in_list[timer_list.front().second] = 0;
             has_send_succ++;
+            now_window_has_send_succ++;
             base++;
             leave_cnt = 0;
             timer_list.pop();
+            last_ask = (unsigned char) recv[2];
+            if (now_window_has_send_succ >= WINDOW_SIZE) {
+                now_window_has_send_succ -= WINDOW_SIZE;
+                if (status == 0 && WINDOW_SIZE < ssthresh) {
+                    WINDOW_SIZE *= 2;
+                    WINDOW_SIZE %= UCHAR_MAX;
+                } else if (status == 0 && WINDOW_SIZE >= ssthresh) {
+                    WINDOW_SIZE += 1;
+                    WINDOW_SIZE %= UCHAR_MAX;
+                    status = 1;
+                } else if (status == 1 || status == 2) {
+                    WINDOW_SIZE += 1;
+                    WINDOW_SIZE %= UCHAR_MAX;
+                    status = 1;
+                }
+            }
+            dupack_cnt = 0;
 
         } else {
-            if (clock() - timer_list.front().first > TIMEOUT) {
+            if (my_tmp_save) {
+                if (last_ask == (unsigned char) recv[2])
+                    dupack_cnt++;
+            }
+            if (dupack_cnt == 3 || clock() - timer_list.front().first > TIMEOUT) {
                 next_package = base;
                 leave_cnt++;
                 has_send -= timer_list.size();
                 while (!timer_list.empty()) timer_list.pop();
+                if (dupack_cnt == 3) {
+                    now_window_has_send_succ = 0;
+                    status = 2;
+                    ssthresh = WINDOW_SIZE / 2;
+                    WINDOW_SIZE = ssthresh + 3;
+
+                } else {
+                    now_window_has_send_succ = 0;
+                    status = 0;
+                    ssthresh = WINDOW_SIZE / 2;
+                    WINDOW_SIZE = 1;
+
+                }
             }
         }
 
@@ -191,9 +236,28 @@ void send_message(char *message, int lent) {
             wave_hand();
             return;
         }
+
+
+
+
+//    queue<pair<int, int>> timer_list;
+//    static int base = 0;
+//    int next_package = base;
+//
+//    int has_send_succ = 0;
+//    int ssthresh = UCHAR_MAX;
+//    WINDOW_SIZE = 1;
+//    int status = 0;// 0 慢启动 1 拥塞控制 2 快速恢复
+//    int now_window_has_send_succ = 0;
+//
+//    while (1) {
+//        if (has_send_succ == tot_package)
+//            break;
+//
         if (base % 100 == 0)
             printf("此文件已经发送%.2f%%\n", (float) base / tot_package * 100);
     }
+
 }
 
 
@@ -249,8 +313,9 @@ int main() {
         fin.close();
         break;
     }
-    printf("请输入发送窗口大小：\n");
-    cin >> WINDOW_SIZE;
+//    printf("请输入发送窗口大小：\n");
+//    cin >> WINDOW_SIZE;
+    WINDOW_SIZE = 1;
     WINDOW_SIZE %= UCHAR_MAX; //防止窗口大小大于序号域长度
     printf("链接建立中...\n");
     shake_hand();
